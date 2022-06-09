@@ -109,6 +109,17 @@ def parse_event_json(data: str) -> Event:
         return parse_event(
             "set_balance", dte, evt["account"], evt["symbol"], evt["amount"]
         )
+    elif evt["type"] == "SetPrice":
+        return parse_event("set_price", dte, evt["symbol"], evt["price"])
+    elif evt["type"] == "SetAllocation":
+        return parse_event(
+            "set_allocation",
+            dte,
+            evt["symbol"],
+            evt["allocation"]["equities"],
+            evt["allocation"]["bonds"],
+            evt["allocation"]["cash"],
+        )
     else:
         return UnknownEvent(event=data)
 
