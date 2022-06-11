@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+import pytest
 from harvest.events import RunReport, SetAllocation, SetBalance, SetPrice, Allocation
 from harvest.report import Report
 
@@ -27,9 +28,9 @@ def test_compute_report():
     report = Report.create(RunReport(date.fromisoformat("2022-05-27")), events)
     result = report.compute()
 
-    assert len(result) == 2
+    assert len(result) == 4
 
-    row1 = result[0]
+    row1 = result[1]
     assert row1[0] == acct
     assert row1[1] == sym
     assert row1[2] == Decimal("123.45")
@@ -37,13 +38,14 @@ def test_compute_report():
     assert row1[4] == "2022-05-25"
 
     total = row1[2] * row1[3]
-    assert row1[5] == (total * allocation.equities) / 100
-    assert row1[6] == (total * allocation.bonds) / 100
-    assert row1[7] == (total * allocation.cash) / 100
-    assert row1[8] == (total * allocation.other) / 100
+    tolerance = Decimal("0.0001")
+    assert row1[5] == pytest.approx((total * allocation.equities) / 100, rel=tolerance)
+    assert row1[6] == pytest.approx((total * allocation.bonds) / 100, rel=tolerance)
+    assert row1[7] == pytest.approx((total * allocation.cash) / 100, rel=tolerance)
+    assert row1[8] == pytest.approx((total * allocation.other) / 100, rel=tolerance)
     assert row1[9] == total
 
-    row2 = result[1]
+    row2 = result[2]
     assert row2[0] == ""
     assert row2[1] == ""
     assert row2[2] == ""

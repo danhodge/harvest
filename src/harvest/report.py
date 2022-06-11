@@ -116,9 +116,24 @@ class Report:
         def reducer(memo: List[Decimal], val: List) -> List[Decimal]:
             return map(lambda arg: arg[0] + arg[1], zip(memo, val[5:]))
 
-        rows = [self.to_row(record) for record in self.records]
-        totals = reduce(reducer, rows, [Decimal("0")] * 5)
-        rows.append([""] * 5 + list(totals))
+        rows = [
+            [
+                "Account",
+                "Symbol",
+                "Shares",
+                "NAV",
+                "As Of",
+                "Stock",
+                "Bonds",
+                "Cash",
+                "Other",
+                "Total",
+            ]
+        ] + [self.to_row(record) for record in self.records]
+        totals = list(reduce(reducer, rows[1:], [Decimal("0")] * 5))
+        percentages = [round((sub / totals[-1]) * 100, 2) for sub in totals[:-1]]
+        rows.append([""] * 5 + totals)
+        rows.append([""] * 5 + list(percentages) + [""])
 
         return rows
 

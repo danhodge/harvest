@@ -39,10 +39,10 @@ class Allocation:
 
     def subtotals(self, total: Decimal) -> Dict[str, Decimal]:
         subtotals = {}
-        subtotals["Equities"] = (self.equities / 100) * total
-        subtotals["Bonds"] = (self.bonds / 100) * total
-        subtotals["Cash"] = (self.cash / 100) * total
-        subtotals["Other"] = (self.other / 100) * total
+        subtotals["Equities"] = round((self.equities / 100) * total, 2)
+        subtotals["Bonds"] = round((self.bonds / 100) * total, 2)
+        subtotals["Cash"] = round((self.cash / 100) * total, 2)
+        subtotals["Other"] = round((self.other / 100) * total, 2)
 
         return subtotals
 
