@@ -14,7 +14,12 @@ def test_compute_report():
     sym = "XYZ"
     acct = "account1"
     allocation = Allocation(
-        equities=Decimal("77.1"), bonds=Decimal("8.91"), cash=Decimal("3.45")
+        stock_large=Decimal("70.5"),
+        stock_mid_small=Decimal("6.5"),
+        stock_intl=Decimal("0.1"),
+        bond_us=Decimal("7.71"),
+        bond_intl=Decimal("1.2"),
+        cash=Decimal("3.45"),
     )
 
     events = [
@@ -39,11 +44,11 @@ def test_compute_report():
 
     total = row1[2] * row1[3]
     tolerance = Decimal("0.0001")
-    assert row1[5] == pytest.approx((total * allocation.equities) / 100, rel=tolerance)
-    assert row1[6] == pytest.approx((total * allocation.bonds) / 100, rel=tolerance)
-    assert row1[7] == pytest.approx((total * allocation.cash) / 100, rel=tolerance)
-    assert row1[8] == pytest.approx((total * allocation.other) / 100, rel=tolerance)
-    assert row1[9] == total
+    assert row1[5] == pytest.approx((total * allocation.stock) / 100, rel=tolerance)
+    assert row1[9] == pytest.approx((total * allocation.bond) / 100, rel=tolerance)
+    assert row1[12] == pytest.approx((total * allocation.cash) / 100, rel=tolerance)
+    assert row1[13] == pytest.approx((total * allocation.other) / 100, rel=tolerance)
+    assert row1[14] == total
 
     row2 = result[2]
     assert row2[0] == ""
@@ -56,3 +61,8 @@ def test_compute_report():
     assert row2[7] == row1[7]
     assert row2[8] == row1[8]
     assert row2[9] == row1[9]
+    assert row2[10] == row1[10]
+    assert row2[11] == row1[11]
+    assert row2[12] == row1[12]
+    assert row2[13] == row1[13]
+    assert row2[14] == row1[14]

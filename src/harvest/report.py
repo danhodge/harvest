@@ -124,13 +124,18 @@ class Report:
                 "NAV",
                 "As Of",
                 "Stock",
-                "Bonds",
+                "Stock - Large",
+                "Stock - Mid/Small",
+                "Stock - Intl",
+                "Bond",
+                "Bond - US",
+                "Bond - Intl",
                 "Cash",
                 "Other",
                 "Total",
             ]
         ] + [self.to_row(record) for record in self.records]
-        totals = list(reduce(reducer, rows[1:], [Decimal("0")] * 5))
+        totals = list(reduce(reducer, rows[1:], [Decimal("0")] * 10))
         percentages = [round((sub / totals[-1]) * 100, 2) for sub in totals[:-1]]
         rows.append([""] * 5 + totals)
         rows.append([""] * 5 + list(percentages) + [""])

@@ -6,6 +6,8 @@ import json
 from re import sub
 from typing import Dict, List
 
+from attr import attr
+
 
 @dataclass(frozen=True)
 class UnknownEvent:
@@ -29,18 +31,34 @@ class SetPrice:
 
 @dataclass
 class Allocation:
-    equities: Decimal
-    bonds: Decimal
+    stock_large: Decimal
+    stock_mid_small: Decimal
+    stock_intl: Decimal
+    bond_us: Decimal
+    bond_intl: Decimal
     cash: Decimal
     other: Decimal = None
 
+    @property
+    def stock(self):
+        return self.stock_large + self.stock_mid_small + self.stock_intl
+
+    @property
+    def bond(self):
+        return self.bond_us + self.bond_intl
+
     def __post_init__(self):
-        self.other = 100 - (self.equities + self.bonds + self.cash)
+        self.other = 100 - (self.stock + self.bond + self.cash)
 
     def subtotals(self, total: Decimal) -> Dict[str, Decimal]:
         subtotals = {}
-        subtotals["Equities"] = round((self.equities / 100) * total, 2)
-        subtotals["Bonds"] = round((self.bonds / 100) * total, 2)
+        subtotals["Stock"] = round((self.stock / 100) * total, 2)
+        subtotals["Stock - Large"] = round((self.stock_large / 100) * total, 2)
+        subtotals["Stock - Mid/Small"] = round((self.stock_mid_small / 100) * total, 2)
+        subtotals["Stock - Intl"] = round((self.stock_intl / 100) * total, 2)
+        subtotals["Bond"] = round((self.bond / 100) * total, 2)
+        subtotals["Bond - US"] = round((self.bond_us / 100) * total, 2)
+        subtotals["Bond - Intl"] = round((self.bond_intl / 100) * total, 2)
         subtotals["Cash"] = round((self.cash / 100) * total, 2)
         subtotals["Other"] = round((self.other / 100) * total, 2)
 
@@ -116,8 +134,11 @@ def parse_event_json(data: str) -> Event:
             "set_allocation",
             dte,
             evt["symbol"],
-            evt["allocation"]["equities"],
-            evt["allocation"]["bonds"],
+            evt["allocation"]["stock_large"],
+            evt["allocation"]["stock_mid_small"],
+            evt["allocation"]["stock_intl"],
+            evt["allocation"]["bond_us"],
+            evt["allocation"]["bond_intl"],
             evt["allocation"]["cash"],
         )
     else:
@@ -136,14 +157,17 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
         )
     elif evt == "set_price" and len(rest) > 1:
         event = SetPrice(symbol=rest[0], date=date, price=Decimal(rest[1]))
-    elif evt == "set_allocation" and len(rest) > 3:
+    elif evt == "set_allocation" and len(rest) > 6:
         event = SetAllocation(
             symbol=rest[0],
             date=date,
             allocation=Allocation(
-                equities=Decimal(rest[1]),
-                bonds=Decimal(rest[2]),
-                cash=Decimal(rest[3]),
+                stock_large=Decimal(rest[1]),
+                stock_mid_small=Decimal(rest[2]),
+                stock_intl=Decimal(rest[3]),
+                bond_us=Decimal(rest[4]),
+                bond_intl=Decimal(rest[5]),
+                cash=Decimal(rest[6]),
                 other=None,
             ),
         )
