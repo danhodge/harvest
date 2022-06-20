@@ -26,7 +26,7 @@ class SetBalance:
 class SetPrice:
     symbol: str
     date: date
-    price: Decimal
+    amount: Decimal
 
 
 @dataclass
@@ -128,7 +128,7 @@ def parse_event_json(data: str) -> Event:
             "set_balance", dte, evt["account"], evt["symbol"], evt["amount"]
         )
     elif evt["type"] == "SetPrice":
-        return parse_event("set_price", dte, evt["symbol"], evt["price"])
+        return parse_event("set_price", dte, evt["symbol"], evt["amount"])
     elif evt["type"] == "SetAllocation":
         return parse_event(
             "set_allocation",
@@ -156,7 +156,7 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
             amount=Decimal(rest[2]),
         )
     elif evt == "set_price" and len(rest) > 1:
-        event = SetPrice(symbol=rest[0], date=date, price=Decimal(rest[1]))
+        event = SetPrice(symbol=rest[0], date=date, amount=Decimal(rest[1]))
     elif evt == "set_allocation" and len(rest) > 6:
         event = SetAllocation(
             symbol=rest[0],

@@ -33,7 +33,7 @@ def handle_event(command: Event, events_file=None):
     match command:
         case SetBalance(account, symbol, date, amt) as sb:
             write_event(sb, file=events_file)
-        case SetPrice(symbol, date, price) as sp:
+        case SetPrice(symbol, date, amount) as sp:
             write_event(sp, file=events_file)
         case SetAllocation() as sa:
             write_event(sa, file=events_file)
