@@ -1,9 +1,12 @@
 from datetime import date
+from decimal import Decimal
 from enum import Enum
 import inspect
+import os
 import re
 from typing import Dict
-from harvest.events import Event, SetBalance, SetPrice, SetAllocation
+from harvest.actions import write_event
+from harvest.events import Allocation, Event, SetBalance, SetPrice, SetAllocation
 
 
 class State(Enum):
@@ -12,6 +15,7 @@ class State(Enum):
     SET_ACCOUNT = 3
     SET_SYMBOL = 4
     SET_AMOUNT = 5
+    SET_ALLOCATION = 6
 
 
 def snake_to_camel(line: str) -> str:
@@ -38,21 +42,21 @@ def resolve_event(line: str, cur: Event) -> Event:
         try:
             return globals()[snake_to_camel("set_{}".format(line))]
         except KeyError:
-            return cur
+            return None
     else:
         return cur
 
 
 def create_event(event_class, args: Dict) -> Event:
-    print("EVENT CLASS = {}".format(event_class))
     params = set(name for name in inspect.signature(event_class).parameters)
-    print("PARAMS = {}".format(params))
     filtered = {k: v for (k, v) in args.items() if k in params}
-    print("FILTERED = {}".format(filtered))
+
     return event_class(**filtered)
 
 
 def main():
+    env = (os.getenv("PYTHON_ENV") or "DEV").lower()
+    events_file = f"harvest.{env}.jsonl"
     prompt = to_prompt("event")
     cur_event = None
     state = State.SET_EVENT
@@ -81,6 +85,11 @@ def main():
             elif kwargs.get("symbol") and cur_event == SetPrice:
                 state = State.SET_AMOUNT
                 prompt = to_prompt("amount")
+            elif kwargs.get("symbol") and cur_event == SetAllocation:
+                state = State.SET_ALLOCATION
+                prompt = to_prompt(
+                    "allocation(stock - lg, stock - md/sm, stock - intl, bond - us, bond - intl, cash)"
+                )
         elif state == State.SET_ACCOUNT:
             if len(line) > 0:
                 kwargs["account"] = line
@@ -95,7 +104,18 @@ def main():
                 default="_".join(camel_to_snake(cur_event.__name__).split("_")[1:]),
             )
             evt = create_event(cur_event, kwargs)
-            print("CREATED EVENT: {}".format(evt))
+            write_event(evt, file=events_file)
+        elif state == State.SET_ALLOCATION and len(line) > 0:
+            amounts = [Decimal(amt) for amt in line.split(" ")]
+            if len(amounts) == 6:
+                kwargs["allocation"] = Allocation(*amounts)
+                evt = create_event(cur_event, kwargs)
+                state = State.SET_EVENT
+                prompt = to_prompt(
+                    "event",
+                    default="_".join(camel_to_snake(cur_event.__name__).split("_")[1:]),
+                )
+                write_event(evt, file=events_file)
 
 
 if __name__ == "__main__":
