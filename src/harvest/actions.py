@@ -33,16 +33,24 @@ def handle_event(command: Event, events_file=None):
     match command:
         case SetBalance(account, symbol, date, amt) as sb:
             write_event(sb, file=events_file)
-        case SetPrice(symbol, date, amount) as sp:
+        case SetPrice(symbol, date, price) as sp:
             write_event(sp, file=events_file)
         case SetAllocation() as sa:
             write_event(sa, file=events_file)
         case RunReport(date, account) as rr:
             report = Report.create(rr, read_events(file=events_file))
             handle_event(
-                FileWritten(path=report.write_to_file()), events_file=events_file
+                FileWritten(
+                    path=report.write_to_file(),
+                    incomplete_symbols=report.incomplete_symbols,
+                ),
+                events_file=events_file,
             )
-        case FileWritten(path):
-            print("Report written to file: {}".format(path))
+        case FileWritten(path, incomplete_symbols):
+            print(
+                "Report written to file: {} (incomplete symbols: {})".format(
+                    path, incomplete_symbols
+                )
+            )
         case UnknownEvent(event):
             print(f"Unknown event: {event}")

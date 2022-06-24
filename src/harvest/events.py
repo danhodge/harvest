@@ -4,7 +4,7 @@ from decimal import Decimal
 from json import JSONEncoder
 import json
 from re import sub
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from attr import attr
 
@@ -81,6 +81,7 @@ class RunReport:
 @dataclass(frozen=True)
 class FileWritten:
     path: str
+    incomplete_symbols: Set[str]
 
 
 # from: https://stackoverflow.com/questions/16258553/how-can-i-define-algebraic-data-types-in-python

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from functools import reduce
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Set
 from harvest.events import (
     Allocation,
     Event,
@@ -13,6 +13,18 @@ from harvest.events import (
     SetPrice,
     event_matcher,
 )
+
+
+def partition(values, fn):
+    included = []
+    excluded = []
+    for value in values:
+        if fn(value):
+            included.append(value)
+        else:
+            excluded.append(value)
+
+    return (included, excluded)
 
 
 def report_event_sort_key(event) -> List:
@@ -88,15 +100,21 @@ class Report:
                     for rec in get_all(symbol):
                         rec.allocation = allocation
 
-        return cls(
-            records=sorted(
-                filter(lambda rec: not rec.is_incomplete(), records.values()),
-                key=lambda rec: (rec.account, rec.symbol),
-            )
+        incomplete, complete = partition(
+            records.values(), lambda rec: rec.is_incomplete()
         )
 
-    def __init__(self, records: List[ReportRecord]):
+        return cls(
+            records=sorted(
+                complete,
+                key=lambda rec: (rec.account, rec.symbol),
+            ),
+            incomplete_symbols={rec.symbol for rec in incomplete},
+        )
+
+    def __init__(self, records: List[ReportRecord], incomplete_symbols: Set[str]):
         self.records = records
+        self.incomplete_symbols = incomplete_symbols
 
     def to_row(self, record: ReportRecord) -> List:
         subtotals = [v for k, v in record.subtotals().items()]
@@ -113,6 +131,9 @@ class Report:
         )
 
     def compute(self) -> List[List]:
+        if len(self.records) == 0:
+            return []
+
         def reducer(memo: List[Decimal], val: List) -> List[Decimal]:
             return map(lambda arg: arg[0] + arg[1], zip(memo, val[5:]))
 
