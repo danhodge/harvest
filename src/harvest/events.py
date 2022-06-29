@@ -88,18 +88,18 @@ class FileWritten:
 Event = UnknownEvent | SetBalance | SetPrice | SetAllocation | RunReport | FileWritten
 
 
-def event_matcher(date: date, account: str | None):
+def event_matcher(target_date: date, target_account: str | None):
     def matcher(event: Event) -> bool:
         match event:
             case SetBalance(account, _, date, _):
-                matches = event.date <= date
-                if matches and account is not None:
-                    matches = event.account == account
+                matches = date <= target_date
+                if matches and target_account is not None:
+                    matches = account == target_account
                 return matches
             case SetPrice(_, date, _):
-                return event.date <= date
+                return date <= target_date
             case SetAllocation(_, date, _):
-                return event.date <= date
+                return date <= target_date
             case _:
                 return False
 

@@ -23,6 +23,7 @@ def test_compute_report():
     )
 
     events = [
+        SetBalance(acct, sym, date.fromisoformat("2022-05-01"), Decimal("567.89")),
         SetAllocation(sym, date.fromisoformat("2022-05-20"), allocation),
         SetBalance(acct, sym, date.fromisoformat("2022-05-20"), Decimal("123.45")),
         SetPrice(sym, date.fromisoformat("2022-05-21"), Decimal("23.45")),
@@ -48,7 +49,7 @@ def test_compute_report():
     assert row1[9] == pytest.approx((total * allocation.bond) / 100, rel=tolerance)
     assert row1[12] == pytest.approx((total * allocation.cash) / 100, rel=tolerance)
     assert row1[13] == pytest.approx((total * allocation.other) / 100, rel=tolerance)
-    assert row1[14] == total
+    assert row1[14] == round(total, 2)
 
     row2 = result[2]
     assert row2[0] == ""

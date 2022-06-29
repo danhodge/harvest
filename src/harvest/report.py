@@ -92,6 +92,16 @@ class Report:
                             allocation=None,
                         )
                         records[(account, symbol)] = record
+                    else:
+                        new_record = ReportRecord(
+                            account=account,
+                            symbol=symbol,
+                            date=date,
+                            amount=amount,
+                            price=None,
+                            allocation=record.allocation,
+                        )
+                        records[(account, symbol)] = new_record
                 case SetPrice(symbol, date, price):
                     for rec in get_all(symbol):
                         rec.date = date
@@ -127,7 +137,7 @@ class Report:
                 str(record.date),
             ]
             + subtotals
-            + [record.total()]
+            + [round(record.total(), 2)]
         )
 
     def compute(self) -> List[List]:
