@@ -3,10 +3,66 @@ from datetime import date
 from decimal import Decimal
 from json import JSONEncoder
 import json
+import numbers
 from re import sub
 from typing import Dict, List, Set
 
 from attr import attr
+
+
+def each_slice(value: str, size: int = 3):
+    i, j = -size, None
+    slices = []
+
+    while True:
+        if j:
+            slice = value[i:j]
+        else:
+            slice = value[i:]
+        if slice:
+            slices.append(slice)
+            j = i
+            i -= size
+        else:
+            break
+
+    slices.reverse()
+    for slice in slices:
+        yield slice
+
+
+class Money:
+    def __init__(self, amount: Decimal):
+        self.amount = amount
+
+    def __repr__(self) -> str:
+        rounded = str(round(self.amount, 2))
+        dollars, cents = rounded.split(".")
+        return ".".join([",".join(each_slice(dollars)), cents])
+
+    def __add__(self, other):
+        if isinstance(other, Money):
+            return Money(self.amount + other.amount)
+        elif isinstance(other, numbers.Number):
+            return Money(self.amount + other)
+        else:
+            raise ValueError("Attempting to add {} to Money".format(type(other)))
+
+    def __mul__(self, other):
+        if isinstance(other, Money):
+            return Money(self.amount * other.amount)
+        elif isinstance(other, numbers.Number):
+            return Money(self.amount * other)
+        else:
+            raise ValueError("Attempting to multiply {} and Money".format(type(other)))
+
+    def __truediv__(self, other):
+        if isinstance(other, Money):
+            return self.amount / other.amount
+        elif isinstance(other, numbers.Number):
+            return self.amount / other
+        else:
+            raise ValueError("Attempting to divide Money by {}".format(type(other)))
 
 
 @dataclass(frozen=True)
@@ -50,17 +106,17 @@ class Allocation:
     def __post_init__(self):
         self.other = 100 - (self.stock + self.bond + self.cash)
 
-    def subtotals(self, total: Decimal) -> Dict[str, Decimal]:
+    def subtotals(self, total: Money) -> Dict[str, Money]:
         subtotals = {}
-        subtotals["Stock"] = round((self.stock / 100) * total, 2)
-        subtotals["Stock - Large"] = round((self.stock_large / 100) * total, 2)
-        subtotals["Stock - Mid/Small"] = round((self.stock_mid_small / 100) * total, 2)
-        subtotals["Stock - Intl"] = round((self.stock_intl / 100) * total, 2)
-        subtotals["Bond"] = round((self.bond / 100) * total, 2)
-        subtotals["Bond - US"] = round((self.bond_us / 100) * total, 2)
-        subtotals["Bond - Intl"] = round((self.bond_intl / 100) * total, 2)
-        subtotals["Cash"] = round((self.cash / 100) * total, 2)
-        subtotals["Other"] = round((self.other / 100) * total, 2)
+        subtotals["Stock"] = total * (self.stock / 100)
+        subtotals["Stock - Large"] = total * (self.stock_large / 100)
+        subtotals["Stock - Mid/Small"] = total * (self.stock_mid_small / 100)
+        subtotals["Stock - Intl"] = total * (self.stock_intl / 100)
+        subtotals["Bond"] = total * (self.bond / 100)
+        subtotals["Bond - US"] = total * (self.bond_us / 100)
+        subtotals["Bond - Intl"] = total * (self.bond_intl / 100)
+        subtotals["Cash"] = total * (self.cash / 100)
+        subtotals["Other"] = total * (self.other / 100)
 
         return subtotals
 

@@ -7,6 +7,7 @@ from typing import Dict, List, NamedTuple, Set
 from harvest.events import (
     Allocation,
     Event,
+    Money,
     RunReport,
     SetAllocation,
     SetBalance,
@@ -58,11 +59,11 @@ class ReportRecord:
             or self.allocation is None
         )
 
-    def subtotals(self) -> Dict[str, Decimal]:
+    def subtotals(self) -> Dict[str, Money]:
         return self.allocation.subtotals(self.total())
 
-    def total(self) -> Decimal:
-        return self.amount * self.price
+    def total(self) -> Money:
+        return Money(self.amount * self.price)
 
 
 class Report:
@@ -137,7 +138,7 @@ class Report:
                 str(record.date),
             ]
             + subtotals
-            + [round(record.total(), 2)]
+            + [record.total()]
         )
 
     def compute(self) -> List[List]:
@@ -145,7 +146,7 @@ class Report:
             return []
 
         def reducer(memo: List[Decimal], val: List) -> List[Decimal]:
-            return map(lambda arg: arg[0] + arg[1], zip(memo, val[5:]))
+            return map(lambda arg: arg[1] + arg[0], zip(memo, val[5:]))
 
         rows = [
             [
