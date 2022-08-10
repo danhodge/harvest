@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Callable, Dict, List, Sequence
 import time
 import requests
+from events import Asset, AssetType
 
 
 @dataclass(frozen=True)
@@ -25,21 +26,32 @@ def yahoo_finance_fetcher(symbol: str, date: date, lookback_days=7) -> str | Non
         return None
 
 
-def lookup_prices(symbols: Sequence[str], date: date):
+def lookup_prices(assets: Sequence[Asset], date: date) -> Dict[str, Quote]:
     results = {}
-    for symbol in symbols:
-        if quote := fetch_quote(symbol=symbol, date=date):
-            results[symbol] = quote
+    for asset in assets:
+        if quote := fetch_quote(symbol=asset.identifier, date=date):
+            results[asset] = quote
 
     return results
 
 
+QuoteFetcher = Callable[[str, date], str | None]
+
+
+def quote_fetchers_by_asset_type() -> Dict[AssetType, QuoteFetcher]:
+    return {
+        "investment": yahoo_finance_fetcher,
+        "cash": lambda _, date: Quote(date, Decimal("1.0")),
+    }
+
+
 def fetch_quote(
-    symbol: str,
+    asset: Asset,
     date: date,
-    fetcher: Callable[[str, date], str | None] = yahoo_finance_fetcher,
+    fetcher: QuoteFetcher = None,
 ) -> Quote | None:
-    result = fetcher(symbol, date)
+    fetcher = fetcher or quote_fetchers_by_asset_type[asset.type]
+    result = fetcher(asset.identifier, date)
     quotes = to_quotes(result) if result else []
 
     for quote in sorted(quotes, key=lambda quote: quote.date, reverse=True):

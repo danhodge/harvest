@@ -6,6 +6,7 @@ from functools import reduce
 from typing import Dict, List, NamedTuple, Set
 from harvest.events import (
     Allocation,
+    Asset,
     Event,
     Money,
     RunReport,
@@ -43,7 +44,7 @@ def report_event_sort_key(event) -> List:
 @dataclass
 class ReportRecord:
     account: str
-    symbol: str
+    asset: str
     date: date
     amount: Decimal
     price: Decimal
@@ -52,11 +53,12 @@ class ReportRecord:
     def is_incomplete(self) -> bool:
         return (
             self.account is None
-            or self.symbol is None
+            or self.asset is None
             or self.date is None
             or self.amount is None
             or self.price is None
-            or self.allocation is None
+            or self.allocation
+            is None  # note: cash failing because allocation is missing
         )
 
     def subtotals(self) -> Dict[str, Money]:
@@ -75,64 +77,67 @@ class Report:
         )
         records = {}
 
-        def get_all(symbol):
-            for key in (k for k in records.keys() if k[1] == symbol):
+        def get_all(asset):
+            for key in (k for k in records.keys() if k[1] == asset):
                 yield records[key]
 
         for evt in events:
             match evt:
-                case SetBalance(account, symbol, date, amount):
-                    record = records.get((account, symbol))
+                case SetBalance(account, asset, date, amount):
+                    print(f"SetPrice({account},{asset},{date},{amount})")
+                    record = records.get((account, asset))
                     if not record:
                         record = ReportRecord(
                             account=account,
-                            symbol=symbol,
+                            asset=asset,
                             date=date,
                             amount=amount,
                             price=None,
                             allocation=None,
                         )
-                        records[(account, symbol)] = record
+                        records[(account, asset)] = record
                     else:
                         new_record = ReportRecord(
                             account=account,
-                            symbol=symbol,
+                            asset=asset,
                             date=date,
                             amount=amount,
                             price=None,
                             allocation=record.allocation,
                         )
-                        records[(account, symbol)] = new_record
-                case SetPrice(symbol, date, price):
-                    for rec in get_all(symbol):
+                        records[(account, asset)] = new_record
+                case SetPrice(asset, date, price):
+                    print(f"SetPrice({asset},{date},{price})")
+                    for rec in get_all(asset):
                         rec.date = date
                         rec.price = price
-                case SetAllocation(symbol, date, allocation):
-                    for rec in get_all(symbol):
+                case SetAllocation(asset, date, allocation):
+                    for rec in get_all(asset):
                         rec.allocation = allocation
 
         incomplete, complete = partition(
             records.values(), lambda rec: rec.is_incomplete()
         )
+        print(f"incomplete={incomplete}")
 
         return cls(
             records=sorted(
                 complete,
-                key=lambda rec: (rec.account, rec.symbol),
+                key=lambda rec: (rec.account, rec.asset.identifier),
             ),
-            incomplete_symbols={rec.symbol for rec in incomplete},
+            incomplete_assets={rec.asset for rec in incomplete},
         )
 
-    def __init__(self, records: List[ReportRecord], incomplete_symbols: Set[str]):
+    def __init__(self, records: List[ReportRecord], incomplete_assets: Set[Asset]):
         self.records = records
-        self.incomplete_symbols = incomplete_symbols
+        self.incomplete_assets = incomplete_assets
 
     def to_row(self, record: ReportRecord) -> List:
         subtotals = [v for k, v in record.subtotals().items()]
         return (
             [
                 record.account,
-                record.symbol,
+                record.asset,
                 record.amount,
                 record.price,
                 str(record.date),

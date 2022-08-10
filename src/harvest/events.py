@@ -4,10 +4,12 @@ from decimal import Decimal
 from json import JSONEncoder
 import json
 import numbers
+from os import access
 from re import sub
-from typing import Dict, List, Set
+from typing import Dict, List, Literal, Set
 
 from attr import attr
+from pyparsing import identbodychars
 
 
 def each_slice(value: str, size: int = 3):
@@ -34,6 +36,12 @@ def each_slice(value: str, size: int = 3):
 class Money:
     def __init__(self, amount: Decimal):
         self.amount = amount
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Money):
+            return self.amount == other.amount
+        else:
+            return self.amount == other
 
     def __repr__(self) -> str:
         rounded = str(round(self.amount, 2))
@@ -65,6 +73,23 @@ class Money:
             raise ValueError("Attempting to divide Money by {}".format(type(other)))
 
 
+AssetType = Literal["investment", "cash"]
+
+
+@dataclass(frozen=True)
+class Asset:
+    identifier: str
+    type: AssetType
+
+    @classmethod
+    def for_symbol(cls, symbol):
+        return Asset(identifier=symbol, type="investment")
+
+    @classmethod
+    def cash(cls):
+        return Asset(identifier="cash", type="cash")
+
+
 @dataclass(frozen=True)
 class UnknownEvent:
     event: str
@@ -73,14 +98,14 @@ class UnknownEvent:
 @dataclass(frozen=True)
 class SetBalance:
     account: str
-    symbol: str
+    asset: Asset
     date: date
     amount: Decimal
 
 
 @dataclass(frozen=True)
 class SetPrice:
-    symbol: str
+    asset: Asset
     date: date
     amount: Decimal
 
@@ -123,7 +148,7 @@ class Allocation:
 
 @dataclass(frozen=True)
 class SetAllocation:
-    symbol: str
+    asset: Asset
     date: date
     allocation: Allocation
 
@@ -182,15 +207,15 @@ def parse_event_json(data: str) -> Event:
 
     if evt["type"] == "SetBalance":
         return parse_event(
-            "set_balance", dte, evt["account"], evt["symbol"], evt["amount"]
+            "set_balance", dte, evt["account"], evt["asset"], evt["amount"]
         )
     elif evt["type"] == "SetPrice":
-        return parse_event("set_price", dte, evt["symbol"], evt["amount"])
+        return parse_event("set_price", dte, evt["asset"], evt["amount"])
     elif evt["type"] == "SetAllocation":
         return parse_event(
             "set_allocation",
             dte,
-            evt["symbol"],
+            evt["asset"],
             evt["allocation"]["stock_large"],
             evt["allocation"]["stock_mid_small"],
             evt["allocation"]["stock_intl"],
@@ -208,15 +233,15 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
     if evt == "set_balance" and len(rest) > 2:
         event = SetBalance(
             account=rest[0],
-            symbol=rest[1],
+            asset=rest[1],
             date=date,
             amount=Decimal(rest[2]),
         )
     elif evt == "set_price" and len(rest) > 1:
-        event = SetPrice(symbol=rest[0], date=date, amount=Decimal(rest[1]))
+        event = SetPrice(asset=rest[0], date=date, amount=Decimal(rest[1]))
     elif evt == "set_allocation" and len(rest) > 6:
         event = SetAllocation(
-            symbol=rest[0],
+            asset=rest[0],
             date=date,
             allocation=Allocation(
                 stock_large=Decimal(rest[1]),

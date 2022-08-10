@@ -6,14 +6,14 @@ import os
 import re
 from typing import Dict
 from harvest.actions import write_event
-from harvest.events import Allocation, Event, SetBalance, SetPrice, SetAllocation
+from harvest.events import Allocation, Asset, Event, SetBalance, SetPrice, SetAllocation
 
 
 class State(Enum):
     SET_EVENT = 1
     SET_DATE = 2
     SET_ACCOUNT = 3
-    SET_SYMBOL = 4
+    SET_ASSET = 4
     SET_AMOUNT = 5
     SET_ALLOCATION = 6
 
@@ -74,18 +74,22 @@ def main():
         elif state == State.SET_DATE:
             if len(line) > 0:
                 kwargs["date"] = line
-            state = State.SET_SYMBOL
-            prompt = to_prompt("symbol", default=kwargs.get("symbol"))
-        elif state == State.SET_SYMBOL:
+            state = State.SET_ASSET
+            prompt = to_prompt("asset", default=kwargs.get("asset"))
+        elif state == State.SET_ASSET:
             if len(line) > 0:
-                kwargs["symbol"] = line.upper()
-            if kwargs.get("symbol") and cur_event == SetBalance:
+                id = line.upper()
+                if id == "CASH":
+                    kwargs["asset"] = Asset.cash()
+                else:
+                    kwargs["asset"] = Asset.for_symbol(id)
+            if kwargs.get("asset") and cur_event == SetBalance:
                 state = State.SET_ACCOUNT
                 prompt = to_prompt("account", default=kwargs.get("account"))
-            elif kwargs.get("symbol") and cur_event == SetPrice:
+            elif kwargs.get("asset") and cur_event == SetPrice:
                 state = State.SET_AMOUNT
                 prompt = to_prompt("amount")
-            elif kwargs.get("symbol") and cur_event == SetAllocation:
+            elif kwargs.get("asset") and cur_event == SetAllocation:
                 state = State.SET_ALLOCATION
                 prompt = to_prompt(
                     "allocation(stock - lg, stock - md/sm, stock - intl, bond - us, bond - intl, cash)"
