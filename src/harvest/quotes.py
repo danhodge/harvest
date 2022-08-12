@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Callable, Dict, List, Sequence
 import time
 import requests
-from events import Asset, AssetType
+from harvest.events import Asset, AssetType
 
 
 @dataclass(frozen=True)

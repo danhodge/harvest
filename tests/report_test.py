@@ -94,12 +94,11 @@ def test_compute_report():
     assert row2[4] == "2022-05-26"
 
     total = row2[2] * row2[3]
-    tolerance = Decimal("0.0001")
-    assert row1[5] == 0
-    assert row1[9] == 0
-    assert row1[12] == total
-    assert row1[13] == 0
-    assert row1[14] == total
+    assert row2[5] == 0
+    assert row2[9] == 0
+    assert row2[12] == total
+    assert row2[13] == 0
+    assert row2[14] == total
 
     row3 = result[3]
     assert row3[0] == ""
@@ -107,13 +106,13 @@ def test_compute_report():
     assert row3[2] == ""
     assert row3[3] == ""
     assert row3[4] == ""
-    assert row3[5] == row1[5]
+    assert row3[5] == row1[5] + row2[5]
     assert row3[6] == row1[6]
     assert row3[7] == row1[7]
     assert row3[8] == row1[8]
-    assert row3[9] == row1[9]
+    assert row3[9] == row1[9] + row2[9]
     assert row3[10] == row1[10]
     assert row3[11] == row1[11]
-    assert row3[12] == row1[12]
+    assert row3[12] == row1[12] + row2[12]
     assert row3[13] == row1[13]
-    assert row3[14] == row1[14]
+    assert row3[14] == row1[14] + row2[14]
