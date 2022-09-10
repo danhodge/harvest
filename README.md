@@ -1,12 +1,16 @@
 #### Setup
 
-python3 -m venv env
-source env/bin/activate
-python3 src/main.py
-
+```bash
+poetry run python3 src/main.py
+```
 
 # install dependencies/new dependencies
-python3 -m pip install -r requirements.txt 
+```bash
+poetry add <package>
+poetry install
+```
 
 # run test
-PYTHONPATH=/Users/dan/development/projects/harvest/src pytest tests/report_test.py
+```bash
+poetry run pytest tests/report_test.py
+```

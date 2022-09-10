@@ -1,4 +1,0 @@
-black==22.3.0
-mypi==0.0.3
-pytest==7.1.2
-requests==2.28.1
