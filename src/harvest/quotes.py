@@ -29,7 +29,7 @@ def yahoo_finance_fetcher(symbol: str, date: date, lookback_days=7) -> str | Non
 def lookup_prices(assets: Sequence[Asset], date: date) -> Dict[str, Quote]:
     results = {}
     for asset in assets:
-        if quote := fetch_quote(symbol=asset.identifier, date=date):
+        if quote := fetch_quote(asset=asset, date=date):
             results[asset] = quote
 
     return results
@@ -41,7 +41,7 @@ QuoteFetcher = Callable[[str, date], str | None]
 def quote_fetchers_by_asset_type() -> Dict[AssetType, QuoteFetcher]:
     return {
         "investment": yahoo_finance_fetcher,
-        "cash": lambda _, date: Quote(date, Decimal("1.0")),
+        "cash": lambda _, date: f"Date,Adj Close\n{date},1.0\n",
     }
 
 
@@ -50,7 +50,7 @@ def fetch_quote(
     date: date,
     fetcher: QuoteFetcher = None,
 ) -> Quote | None:
-    fetcher = fetcher or quote_fetchers_by_asset_type[asset.type]
+    fetcher = fetcher or quote_fetchers_by_asset_type()[asset.type]
     result = fetcher(asset.identifier, date)
     quotes = to_quotes(result) if result else []
 

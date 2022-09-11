@@ -53,7 +53,9 @@ def handle_event(command: Event, events_file=None):
             handle_event(
                 FileWritten(
                     path=report.write_to_file(),
-                    incomplete_symbols=report.incomplete_symbols,
+                    incomplete_symbols=[
+                        asset.identifier for asset in report.incomplete_assets
+                    ],
                 ),
                 events_file=events_file,
             )

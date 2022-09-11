@@ -76,7 +76,7 @@ class Money:
 AssetType = Literal["investment", "cash"]
 
 
-@dataclass(frozen=True)
+@dataclass(eq=True, frozen=True)
 class Asset:
     identifier: str
     type: AssetType
@@ -233,15 +233,15 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
     if evt == "set_balance" and len(rest) > 2:
         event = SetBalance(
             account=rest[0],
-            asset=rest[1],
+            asset=parse_asset(rest[1]),
             date=date,
             amount=Decimal(rest[2]),
         )
     elif evt == "set_price" and len(rest) > 1:
-        event = SetPrice(asset=rest[0], date=date, amount=Decimal(rest[1]))
+        event = SetPrice(asset=parse_asset(rest[0]), date=date, amount=Decimal(rest[1]))
     elif evt == "set_allocation" and len(rest) > 6:
         event = SetAllocation(
-            asset=rest[0],
+            asset=parse_asset(rest[0]),
             date=date,
             allocation=Allocation(
                 stock_large=Decimal(rest[1]),
@@ -260,3 +260,7 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
         event = RunReport(**kwargs)
 
     return event
+
+
+def parse_asset(asset: Dict) -> Asset:
+    return Asset(identifier=asset["identifier"], type=asset["type"])

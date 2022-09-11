@@ -44,7 +44,7 @@ def report_event_sort_key(event) -> List:
 @dataclass
 class ReportRecord:
     account: str
-    asset: str
+    asset: Asset
     date: date
     amount: Decimal
     price: Decimal
@@ -84,7 +84,6 @@ class Report:
         for evt in events:
             match evt:
                 case SetBalance(account, asset, date, amount):
-                    print(f"SetPrice({account},{asset},{date},{amount})")
                     record = records.get((account, asset))
                     if not record:
                         record = ReportRecord(
@@ -137,7 +136,7 @@ class Report:
         return (
             [
                 record.account,
-                record.asset,
+                record.asset.identifier,
                 record.amount,
                 record.price,
                 str(record.date),
