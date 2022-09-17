@@ -113,6 +113,9 @@ class SetPrice:
     created_at: time
 
 
+# TODO: add a set target allocation event
+
+
 @dataclass
 class Allocation:
     stock_large: Decimal
@@ -196,6 +199,8 @@ class EventEncoder(JSONEncoder):
         if isinstance(obj, Event):
             return obj.__dict__
         elif isinstance(obj, Allocation):
+            return obj.__dict__
+        elif isinstance(obj, Asset):
             return obj.__dict__
         elif isinstance(obj, date):
             return obj.isoformat()

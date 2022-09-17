@@ -76,7 +76,10 @@ def main():
             if len(line) > 0:
                 kwargs["date"] = line
             state = State.SET_ASSET
-            prompt = to_prompt("asset", default=kwargs.get("asset"))
+            default_asset = kwargs.get("asset")
+            prompt = to_prompt(
+                "asset", default=default_asset.identifier if default_asset else None
+            )
         elif state == State.SET_ASSET:
             if len(line) > 0:
                 id = line.upper()
