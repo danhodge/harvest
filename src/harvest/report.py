@@ -106,7 +106,6 @@ class Report:
                         )
                         records[(account, asset)] = new_record
                 case SetPrice(asset, date, price):
-                    print(f"SetPrice({asset},{date},{price})")
                     for rec in get_all(asset):
                         rec.date = date
                         rec.price = price

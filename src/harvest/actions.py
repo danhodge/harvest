@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 import json
 from typing import List, Sequence
 from harvest.report import Report
@@ -72,6 +72,13 @@ def handle_event(command: Event, events_file=None):
 def generate_set_price_events(assets: Sequence[Asset], date: date) -> List[SetPrice]:
     events = []
     for asset, quote in lookup_prices(assets, date).items():
-        events.append(SetPrice(asset=asset, date=quote.date, amount=quote.price))
+        events.append(
+            SetPrice(
+                asset=asset,
+                date=quote.date,
+                amount=quote.price,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+        )
 
     return events

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 import inspect
@@ -48,7 +48,8 @@ def resolve_event(line: str, cur: Event) -> Event:
 
 
 def create_event(event_class, args: Dict) -> Event:
-    params = set(name for name in inspect.signature(event_class).parameters)
+    params = {name for name in inspect.signature(event_class).parameters}
+    args["created_at"] = datetime.now(timezone.utc).isoformat()
     filtered = {k: v for (k, v) in args.items() if k in params}
 
     return event_class(**filtered)

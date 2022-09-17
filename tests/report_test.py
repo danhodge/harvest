@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import pytest
 from harvest.events import (
@@ -15,8 +15,7 @@ from harvest.report import Report
 # https://docs.pytest.org/en/7.1.x/explanation/goodpractices.html#test-discovery
 # https://blog.ionelmc.ro/2014/05/25/python-packaging/#the-structure
 
-# Requirements stuff, requirements-test.txt?
-# https://towardsdatascience.com/requirements-vs-setuptools-python-ae3ee66e28af
+
 def test_compute_report():
     xyz = Asset.for_symbol("XYZ")
     acct = "account1"
@@ -38,31 +37,63 @@ def test_compute_report():
     )
 
     events = [
-        SetPrice(Asset.cash(), date.fromisoformat("2022-05-26"), Decimal("1.0")),
+        SetPrice(
+            Asset.cash(),
+            date.fromisoformat("2022-05-26"),
+            Decimal("1.0"),
+            datetime.now(timezone.utc).isoformat(),
+        ),
         SetBalance(
             acct,
             xyz,
             date.fromisoformat("2022-05-01"),
             Decimal("567.89"),
+            datetime.now(timezone.utc).isoformat(),
         ),
-        SetAllocation(xyz, date.fromisoformat("2022-05-20"), allocation),
+        SetAllocation(
+            xyz,
+            date.fromisoformat("2022-05-20"),
+            allocation,
+            datetime.now(timezone.utc).isoformat(),
+        ),
         SetBalance(
             acct,
             xyz,
             date.fromisoformat("2022-05-20"),
             Decimal("123.45"),
+            datetime.now(timezone.utc).isoformat(),
         ),
-        SetPrice(xyz, date.fromisoformat("2022-05-21"), Decimal("23.45")),
-        SetAllocation(Asset.cash(), date.fromisoformat("2022-01-01"), cash_allocation),
+        SetPrice(
+            xyz,
+            date.fromisoformat("2022-05-21"),
+            Decimal("23.45"),
+            datetime.now(timezone.utc).isoformat(),
+        ),
+        SetAllocation(
+            Asset.cash(),
+            date.fromisoformat("2022-01-01"),
+            cash_allocation,
+            datetime.now(timezone.utc).isoformat(),
+        ),
         SetBalance(
             acct,
             xyz,
             date.fromisoformat("2022-05-28"),
             Decimal("234.56"),
+            datetime.now(timezone.utc).isoformat(),
         ),
-        SetPrice(xyz, date.fromisoformat("2022-05-25"), Decimal("34.56")),
+        SetPrice(
+            xyz,
+            date.fromisoformat("2022-05-25"),
+            Decimal("34.56"),
+            datetime.now(timezone.utc).isoformat(),
+        ),
         SetBalance(
-            acct, Asset.cash(), date.fromisoformat("2022-05-19"), Decimal("123.45")
+            acct,
+            Asset.cash(),
+            date.fromisoformat("2022-05-19"),
+            Decimal("123.45"),
+            datetime.now(timezone.utc).isoformat(),
         ),
     ]
 
@@ -73,7 +104,7 @@ def test_compute_report():
 
     row1 = result[1]
     assert row1[0] == acct
-    assert row1[1] == xyz
+    assert row1[1] == xyz.identifier
     assert row1[2] == Decimal("123.45")
     assert row1[3] == Decimal("34.56")
     assert row1[4] == "2022-05-25"
@@ -88,7 +119,7 @@ def test_compute_report():
 
     row2 = result[2]
     assert row2[0] == acct
-    assert row2[1] == Asset.cash()
+    assert row2[1] == Asset.cash().identifier
     assert row2[2] == Decimal("123.45")
     assert row2[3] == Decimal("1.0")
     assert row2[4] == "2022-05-26"

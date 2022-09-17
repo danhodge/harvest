@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from json import JSONEncoder
 import json
 import numbers
 from os import access
 from re import sub
+from sqlite3 import Time
 from typing import Dict, List, Literal, Set
 
 from attr import attr
@@ -101,6 +102,7 @@ class SetBalance:
     asset: Asset
     date: date
     amount: Decimal
+    created_at: time
 
 
 @dataclass(frozen=True)
@@ -108,6 +110,7 @@ class SetPrice:
     asset: Asset
     date: date
     amount: Decimal
+    created_at: time
 
 
 @dataclass
@@ -151,6 +154,7 @@ class SetAllocation:
     asset: Asset
     date: date
     allocation: Allocation
+    created_at: time
 
 
 @dataclass(frozen=True)
@@ -207,10 +211,17 @@ def parse_event_json(data: str) -> Event:
 
     if evt["type"] == "SetBalance":
         return parse_event(
-            "set_balance", dte, evt["account"], evt["asset"], evt["amount"]
+            "set_balance",
+            dte,
+            evt["account"],
+            evt["asset"],
+            evt["amount"],
+            evt["created_at"],
         )
     elif evt["type"] == "SetPrice":
-        return parse_event("set_price", dte, evt["asset"], evt["amount"])
+        return parse_event(
+            "set_price", dte, evt["asset"], evt["amount"], evt["created_at"]
+        )
     elif evt["type"] == "SetAllocation":
         return parse_event(
             "set_allocation",
@@ -222,6 +233,7 @@ def parse_event_json(data: str) -> Event:
             evt["allocation"]["bond_us"],
             evt["allocation"]["bond_intl"],
             evt["allocation"]["cash"],
+            evt["created_at"],
         )
     else:
         return UnknownEvent(event=data)
@@ -230,16 +242,22 @@ def parse_event_json(data: str) -> Event:
 def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
     event = UnknownEvent(event=str)
 
-    if evt == "set_balance" and len(rest) > 2:
+    if evt == "set_balance" and len(rest) > 3:
         event = SetBalance(
             account=rest[0],
             asset=parse_asset(rest[1]),
             date=date,
             amount=Decimal(rest[2]),
+            created_at=datetime.fromisoformat(rest[3]),
         )
-    elif evt == "set_price" and len(rest) > 1:
-        event = SetPrice(asset=parse_asset(rest[0]), date=date, amount=Decimal(rest[1]))
-    elif evt == "set_allocation" and len(rest) > 6:
+    elif evt == "set_price" and len(rest) > 2:
+        event = SetPrice(
+            asset=parse_asset(rest[0]),
+            date=date,
+            amount=Decimal(rest[1]),
+            created_at=datetime.fromisoformat(rest[2]),
+        )
+    elif evt == "set_allocation" and len(rest) > 7:
         event = SetAllocation(
             asset=parse_asset(rest[0]),
             date=date,
@@ -252,6 +270,7 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
                 cash=Decimal(rest[6]),
                 other=None,
             ),
+            created_at=datetime.fromisoformat(rest[7]),
         )
     elif evt == "run_report":
         kwargs = {"date": date}
