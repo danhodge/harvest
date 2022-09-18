@@ -6,7 +6,15 @@ import os
 import re
 from typing import Dict
 from harvest.actions import write_event
-from harvest.events import Allocation, Asset, Event, SetBalance, SetPrice, SetAllocation
+from harvest.events import (
+    Allocation,
+    Asset,
+    Event,
+    SetBalance,
+    SetPrice,
+    SetAllocation,
+    SetTargetAllocation,
+)
 
 
 class State(Enum):
@@ -16,6 +24,7 @@ class State(Enum):
     SET_ASSET = 4
     SET_AMOUNT = 5
     SET_ALLOCATION = 6
+    SET_TARGET_ALLOCATION = 7
 
 
 def snake_to_camel(line: str) -> str:
@@ -75,11 +84,17 @@ def main():
         elif state == State.SET_DATE:
             if len(line) > 0:
                 kwargs["date"] = line
-            state = State.SET_ASSET
-            default_asset = kwargs.get("asset")
-            prompt = to_prompt(
-                "asset", default=default_asset.identifier if default_asset else None
-            )
+            if cur_event == SetTargetAllocation:
+                state = State.SET_ALLOCATION
+                prompt = to_prompt(
+                    "allocation(stock - lg, stock - md/sm, stock - intl, bond - us, bond - intl, cash)"
+                )
+            else:
+                state = State.SET_ASSET
+                default_asset = kwargs.get("asset")
+                prompt = to_prompt(
+                    "asset", default=default_asset.identifier if default_asset else None
+                )
         elif state == State.SET_ASSET:
             if len(line) > 0:
                 id = line.upper()

@@ -13,6 +13,7 @@ from harvest.events import (
     SetAllocation,
     SetBalance,
     SetPrice,
+    SetTargetAllocation,
     event_matcher,
 )
 
@@ -31,12 +32,14 @@ def partition(values, fn):
 
 def report_event_sort_key(event) -> List:
     match event:
-        case SetBalance(_, _, date, _):
+        case SetBalance(_, _, date, _, _):
             return [0, date]
-        case SetPrice(_, date, _):
+        case SetPrice(_, date, _, _):
             return [1, date]
-        case SetAllocation(_, date, _):
+        case SetAllocation(_, date, _, _):
             return [2, date]
+        case SetTargetAllocation(date, _, _):
+            return [3, date]
         case _:
             return [3]
 
@@ -76,6 +79,7 @@ class Report:
             key=report_event_sort_key,
         )
         records = {}
+        target_allocation = None
 
         def get_all(asset):
             for key in (k for k in records.keys() if k[1] == asset):
@@ -112,6 +116,8 @@ class Report:
                 case SetAllocation(asset, date, allocation):
                     for rec in get_all(asset):
                         rec.allocation = allocation
+                case SetTargetAllocation(date, allocation):
+                    target_allocation = allocation
 
         incomplete, complete = partition(
             records.values(), lambda rec: rec.is_incomplete()
@@ -124,11 +130,18 @@ class Report:
                 key=lambda rec: (rec.account, rec.asset.identifier),
             ),
             incomplete_assets={rec.asset for rec in incomplete},
+            target_allocation=target_allocation,
         )
 
-    def __init__(self, records: List[ReportRecord], incomplete_assets: Set[Asset]):
+    def __init__(
+        self,
+        records: List[ReportRecord],
+        incomplete_assets: Set[Asset],
+        target_allocation: Allocation = None,
+    ):
         self.records = records
         self.incomplete_assets = incomplete_assets
+        self.target_allocation = target_allocation
 
     def to_row(self, record: ReportRecord) -> List:
         subtotals = [v for k, v in record.subtotals().items()]
@@ -174,6 +187,29 @@ class Report:
         percentages = [round((sub / totals[-1]) * 100, 2) for sub in totals[:-1]]
         rows.append([""] * 5 + totals)
         rows.append([""] * 5 + list(percentages) + [""])
+
+        if self.target_allocation:
+            rows.append(
+                [""] * 5
+                + [
+                    self.target_allocation.stock,
+                    self.target_allocation.stock_large,
+                    self.target_allocation.stock_mid_small,
+                    self.target_allocation.stock_intl,
+                    self.target_allocation.bond,
+                    self.target_allocation.bond_us,
+                    self.target_allocation.bond_intl,
+                    self.target_allocation.cash,
+                    self.target_allocation.other,
+                ]
+                + [""]
+            )
+
+            corrections = map(
+                lambda t: (totals[-1] * ((t[1] - t[0]) / 100)),
+                zip(percentages, rows[-1][5:14]),
+            )
+            rows.append([""] * 5 + list(corrections) + [""])
 
         return rows
 

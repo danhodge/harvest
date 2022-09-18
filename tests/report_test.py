@@ -8,6 +8,7 @@ from harvest.events import (
     SetPrice,
     Allocation,
     Asset,
+    SetTargetAllocation,
 )
 from harvest.report import Report
 
@@ -26,6 +27,14 @@ def test_compute_report():
         bond_us=Decimal("7.71"),
         bond_intl=Decimal("1.2"),
         cash=Decimal("3.45"),
+    )
+    target_allocation = Allocation(
+        stock_large=Decimal("25.5"),
+        stock_mid_small=Decimal("20.2"),
+        stock_intl=Decimal("12.4"),
+        bond_us=Decimal("5.5"),
+        bond_intl=Decimal("1.23"),
+        cash=Decimal("8.33"),
     )
     cash_allocation = Allocation(
         stock_large=Decimal("0"),
@@ -95,12 +104,17 @@ def test_compute_report():
             Decimal("123.45"),
             datetime.now(timezone.utc).isoformat(),
         ),
+        SetTargetAllocation(
+            date.fromisoformat("2022-01-01"),
+            target_allocation,
+            datetime.now(timezone.utc).isoformat(),
+        ),
     ]
 
     report = Report.create(RunReport(date.fromisoformat("2022-05-27")), events)
     result = report.compute()
 
-    assert len(result) == 5
+    assert len(result) == 7
 
     row1 = result[1]
     assert row1[0] == acct
@@ -131,6 +145,7 @@ def test_compute_report():
     assert row2[13] == 0
     assert row2[14] == total
 
+    # totals
     row3 = result[3]
     assert row3[0] == ""
     assert row3[1] == ""
@@ -147,3 +162,30 @@ def test_compute_report():
     assert row3[12] == row1[12] + row2[12]
     assert row3[13] == row1[13]
     assert row3[14] == row1[14] + row2[14]
+
+    # target allocation percentages
+    row5 = result[5]
+    assert row5[0] == ""
+    assert row5[1] == ""
+    assert row5[2] == ""
+    assert row5[3] == ""
+    assert row5[4] == ""
+    assert row5[5] == row5[6] + row5[7] + row5[8]
+    assert row5[6] == target_allocation.stock_large
+    assert row5[7] == target_allocation.stock_mid_small
+    assert row5[8] == target_allocation.stock_intl
+    assert row5[9] == row5[10] + row5[11]
+    assert row5[10] == target_allocation.bond_us
+    assert row5[11] == target_allocation.bond_intl
+    assert row5[12] == target_allocation.cash
+    assert row5[13] == target_allocation.other
+    assert row5[14] == ""
+
+    # target allocation corrections
+    row6 = result[6]
+    assert row6[0] == ""
+    assert row6[1] == ""
+    assert row6[2] == ""
+    assert row6[3] == ""
+    assert row6[4] == ""
+    assert row6[5] == "-738.82"

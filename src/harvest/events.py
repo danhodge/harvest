@@ -113,9 +113,6 @@ class SetPrice:
     created_at: time
 
 
-# TODO: add a set target allocation event
-
-
 @dataclass
 class Allocation:
     stock_large: Decimal
@@ -153,6 +150,13 @@ class Allocation:
 
 
 @dataclass(frozen=True)
+class SetTargetAllocation:
+    date: date
+    allocation: Allocation
+    created_at: time
+
+
+@dataclass(frozen=True)
 class SetAllocation:
     asset: Asset
     date: date
@@ -173,20 +177,30 @@ class FileWritten:
 
 
 # from: https://stackoverflow.com/questions/16258553/how-can-i-define-algebraic-data-types-in-python
-Event = UnknownEvent | SetBalance | SetPrice | SetAllocation | RunReport | FileWritten
+Event = (
+    UnknownEvent
+    | SetBalance
+    | SetPrice
+    | SetAllocation
+    | SetTargetAllocation
+    | RunReport
+    | FileWritten
+)
 
 
 def event_matcher(target_date: date, target_account: str | None):
     def matcher(event: Event) -> bool:
         match event:
-            case SetBalance(account, _, date, _):
+            case SetBalance(account, _, date, _, _):
                 matches = date <= target_date
                 if matches and target_account is not None:
                     matches = account == target_account
                 return matches
-            case SetPrice(_, date, _):
+            case SetPrice(_, date, _, _):
                 return date <= target_date
-            case SetAllocation(_, date, _):
+            case SetAllocation(_, date, _, _):
+                return date <= target_date
+            case SetTargetAllocation(date, _, _):
                 return date <= target_date
             case _:
                 return False
@@ -240,6 +254,18 @@ def parse_event_json(data: str) -> Event:
             evt["allocation"]["cash"],
             evt["created_at"],
         )
+    elif evt["type"] == "SetTargetAllocation":
+        return parse_event(
+            "set_target_allocation",
+            dte,
+            evt["allocation"]["stock_large"],
+            evt["allocation"]["stock_mid_small"],
+            evt["allocation"]["stock_intl"],
+            evt["allocation"]["bond_us"],
+            evt["allocation"]["bond_intl"],
+            evt["allocation"]["cash"],
+            evt["created_at"],
+        )
     else:
         return UnknownEvent(event=data)
 
@@ -276,6 +302,20 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
                 other=None,
             ),
             created_at=datetime.fromisoformat(rest[7]),
+        )
+    elif evt == "set_target_allocation" and len(rest) > 6:
+        event = SetTargetAllocation(
+            date=date,
+            allocation=Allocation(
+                stock_large=Decimal(rest[0]),
+                stock_mid_small=Decimal(rest[1]),
+                stock_intl=Decimal(rest[2]),
+                bond_us=Decimal(rest[3]),
+                bond_intl=Decimal(rest[4]),
+                cash=Decimal(rest[5]),
+                other=None,
+            ),
+            created_at=datetime.fromisoformat(rest[6]),
         )
     elif evt == "run_report":
         kwargs = {"date": date}
