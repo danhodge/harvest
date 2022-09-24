@@ -51,6 +51,7 @@ class ReportRecord:
     date: date
     amount: Decimal
     price: Decimal
+    price_date: date
     allocation: Allocation
 
     def is_incomplete(self) -> bool:
@@ -60,8 +61,8 @@ class ReportRecord:
             or self.date is None
             or self.amount is None
             or self.price is None
-            or self.allocation
-            is None  # note: cash failing because allocation is missing
+            or self.price_date is None
+            or self.allocation is None
         )
 
     def subtotals(self) -> Dict[str, Money]:
@@ -96,6 +97,7 @@ class Report:
                             date=date,
                             amount=amount,
                             price=None,
+                            price_date=None,
                             allocation=None,
                         )
                         records[(account, asset)] = record
@@ -106,12 +108,13 @@ class Report:
                             date=date,
                             amount=amount,
                             price=None,
+                            price_date=None,
                             allocation=record.allocation,
                         )
                         records[(account, asset)] = new_record
                 case SetPrice(asset, date, price):
                     for rec in get_all(asset):
-                        rec.date = date
+                        rec.price_date = date
                         rec.price = price
                 case SetAllocation(asset, date, allocation):
                     for rec in get_all(asset):
@@ -150,8 +153,9 @@ class Report:
                 record.account,
                 record.asset.identifier,
                 record.amount,
-                record.price,
                 str(record.date),
+                record.price,
+                str(record.price_date),
             ]
             + subtotals
             + [record.total()]
@@ -161,14 +165,17 @@ class Report:
         if len(self.records) == 0:
             return []
 
+        prefix_cols = 6
+
         def reducer(memo: List[Decimal], val: List) -> List[Decimal]:
-            return map(lambda arg: arg[1] + arg[0], zip(memo, val[5:]))
+            return map(lambda arg: arg[1] + arg[0], zip(memo, val[prefix_cols:]))
 
         rows = [
             [
                 "Account",
                 "Symbol",
                 "Shares",
+                "As Of",
                 "NAV",
                 "As Of",
                 "Stock",
@@ -183,14 +190,18 @@ class Report:
                 "Total",
             ]
         ] + [self.to_row(record) for record in self.records]
+
         totals = list(reduce(reducer, rows[1:], [Decimal("0")] * 10))
         percentages = [round((sub / totals[-1]) * 100, 2) for sub in totals[:-1]]
-        rows.append([""] * 5 + totals)
-        rows.append([""] * 5 + list(percentages) + [""])
+        rows.append(["Totals"] + ([""] * (prefix_cols - 1)) + totals)
+        rows.append(
+            ["Percentages"] + ([""] * (prefix_cols - 1)) + list(percentages) + [""]
+        )
 
         if self.target_allocation:
             rows.append(
-                [""] * 5
+                ["Target Percentages"]
+                + ([""] * (prefix_cols - 1))
                 + [
                     self.target_allocation.stock,
                     self.target_allocation.stock_large,
@@ -207,9 +218,11 @@ class Report:
 
             corrections = map(
                 lambda t: (totals[-1] * ((t[1] - t[0]) / 100)),
-                zip(percentages, rows[-1][5:14]),
+                zip(percentages, rows[-1][prefix_cols:15]),
             )
-            rows.append([""] * 5 + list(corrections) + [""])
+            rows.append(
+                ["Corrections"] + ([""] * (prefix_cols - 1)) + list(corrections) + [""]
+            )
 
         return rows
 

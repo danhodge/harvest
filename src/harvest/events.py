@@ -45,9 +45,10 @@ class Money:
             return self.amount == other
 
     def __repr__(self) -> str:
-        rounded = str(round(self.amount, 2))
+        sign = "" if abs(self.amount) == self.amount else "-"
+        rounded = str(round(abs(self.amount), 2))
         dollars, cents = rounded.split(".")
-        return ".".join([",".join(each_slice(dollars)), cents])
+        return sign + ".".join([",".join(each_slice(dollars)), cents])
 
     def __add__(self, other):
         if isinstance(other, Money):
