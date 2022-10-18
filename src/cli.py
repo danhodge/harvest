@@ -98,8 +98,9 @@ def main():
         elif state == State.SET_ASSET:
             if len(line) > 0:
                 id = line.upper()
-                if id == "CASH":
-                    kwargs["asset"] = Asset.cash()
+                if id.startswith("$"):
+                    # prefix all cash assets symbols with $
+                    kwargs["asset"] = Asset.cash(identifier=id[1:])
                 else:
                     kwargs["asset"] = Asset.for_symbol(id)
             if kwargs.get("asset") and cur_event == SetBalance:
