@@ -14,24 +14,8 @@ from pyparsing import identbodychars
 
 
 def each_slice(value: str, size: int = 3):
-    i, j = -size, None
-    slices = []
-
-    while True:
-        if j:
-            slice = value[i:j]
-        else:
-            slice = value[i:]
-        if slice:
-            slices.append(slice)
-            j = i
-            i -= size
-        else:
-            break
-
-    slices.reverse()
-    for slice in slices:
-        yield slice
+    for i in range(0, len(value), size):
+        yield value[i : i + size]
 
 
 class Money:
@@ -88,8 +72,8 @@ class Asset:
         return Asset(identifier=symbol, type="investment")
 
     @classmethod
-    def cash(cls):
-        return Asset(identifier="cash", type="cash")
+    def cash(cls, identifier="cash"):
+        return Asset(identifier=identifier, type="cash")
 
 
 @dataclass(frozen=True)
