@@ -2,7 +2,7 @@ import csv
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Callable, Dict, List, Sequence
+from typing import Callable, Dict, List, Sequence, Iterator, Iterable, Tuple
 import time
 import requests
 from harvest.events import Asset, AssetType
@@ -14,7 +14,9 @@ class Quote:
     price: Decimal
 
 
-def yahoo_finance_fetcher(symbol: str, date: date, lookback_days=7) -> str | None:
+def yahoo_finance_fetcher(
+    symbol: str, date: date, lookback_days: int = 7
+) -> str | None:
     start_time = int(time.mktime((date - timedelta(days=lookback_days)).timetuple()))
     end_time = int(time.mktime(date.timetuple()))
     url = f"https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={start_time}&period2={end_time}&interval=1d&events=history&includeAdjustedClose=true"
@@ -26,7 +28,7 @@ def yahoo_finance_fetcher(symbol: str, date: date, lookback_days=7) -> str | Non
         return None
 
 
-def lookup_prices(assets: Sequence[Asset], date: date) -> Dict[str, Quote]:
+def lookup_prices(assets: Iterable[Asset], date: date) -> Dict[Asset, Quote]:
     results = {}
     for asset in assets:
         if quote := fetch_quote(asset=asset, date=date):
@@ -48,7 +50,7 @@ def quote_fetchers_by_asset_type() -> Dict[AssetType, QuoteFetcher]:
 def fetch_quote(
     asset: Asset,
     date: date,
-    fetcher: QuoteFetcher = None,
+    fetcher: QuoteFetcher | None = None,
 ) -> Quote | None:
     fetcher = fetcher or quote_fetchers_by_asset_type()[asset.type]
     result = fetcher(asset.identifier, date)
@@ -58,8 +60,10 @@ def fetch_quote(
         if quote.date <= date:
             return quote
 
+    return None
 
-def to_quotes(price_data: str) -> List[Quote]:
+
+def to_quotes(price_data: str) -> Iterator[Quote]:
     rows = list(csv.reader(price_data.splitlines()))
     header = rows[0]
     return map(
@@ -68,8 +72,8 @@ def to_quotes(price_data: str) -> List[Quote]:
     )
 
 
-def transform(header: Sequence, row: Sequence) -> Dict:
-    def transformer(t):
+def transform(header: Sequence[str], row: Sequence[str]) -> Dict[str, date | Decimal]:
+    def transformer(t: Tuple[str, str]) -> Tuple[str, date | Decimal]:
         if t[0] == "Date":
             return t[0], date.fromisoformat(t[1])
         else:

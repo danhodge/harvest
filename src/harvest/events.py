@@ -7,22 +7,37 @@ import numbers
 from os import access
 from re import sub
 from sqlite3 import Time
-from typing import Dict, List, Literal, Set
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Set,
+    Generator,
+    Self,
+    TypeVar,
+    cast,
+    SupportsFloat,
+)
 
 from attr import attr
 from pyparsing import identbodychars
 
 
-def each_slice(value: str, size: int = 3):
+def each_slice(value: str, size: int = 3) -> Generator[str, None, None]:
     for i in range(0, len(value), size):
         yield value[i : i + size]
+
+
+TMoney = TypeVar("TMoney", bound="Money")
 
 
 class Money:
     def __init__(self, amount: Decimal):
         self.amount = amount
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Money):
             return self.amount == other.amount
         else:
@@ -34,32 +49,34 @@ class Money:
         dollars, cents = rounded.split(".")
         return sign + ".".join([",".join(each_slice(dollars)), cents])
 
-    def __add__(self, other):
+    def __add__(self, other: TMoney | SupportsFloat) -> TMoney:
         if isinstance(other, Money):
-            return Money(self.amount + other.amount)
-        elif isinstance(other, numbers.Number):
-            return Money(self.amount + other)
+            # cast() is a work-around for a mypy issue: https://github.com/python/mypy/issues/12800
+            return cast(TMoney, Money(self.amount + other.amount))
+        elif isinstance(other, SupportsFloat):
+            return cast(TMoney, Money(self.amount + Decimal(float(other))))
         else:
             raise ValueError("Attempting to add {} to Money".format(type(other)))
 
-    def __mul__(self, other):
+    def __mul__(self, other: TMoney | SupportsFloat) -> TMoney:
         if isinstance(other, Money):
-            return Money(self.amount * other.amount)
-        elif isinstance(other, numbers.Number):
-            return Money(self.amount * other)
+            return cast(TMoney, Money(self.amount * other.amount))
+        elif isinstance(other, SupportsFloat):
+            return cast(TMoney, Money(self.amount * Decimal(float(other))))
         else:
             raise ValueError("Attempting to multiply {} and Money".format(type(other)))
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: TMoney | SupportsFloat) -> Decimal:
         if isinstance(other, Money):
             return self.amount / other.amount
-        elif isinstance(other, numbers.Number):
-            return self.amount / other
+        elif isinstance(other, SupportsFloat):
+            return self.amount / Decimal(float(other))
         else:
             raise ValueError("Attempting to divide Money by {}".format(type(other)))
 
 
 AssetType = Literal["investment", "cash"]
+TAsset = TypeVar("TAsset", bound="Asset")
 
 
 @dataclass(eq=True, frozen=True)
@@ -68,12 +85,12 @@ class Asset:
     type: AssetType
 
     @classmethod
-    def for_symbol(cls, symbol):
-        return Asset(identifier=symbol, type="investment")
+    def for_symbol(cls: TAsset, symbol: str) -> TAsset:
+        return cast(TAsset, Asset(identifier=symbol, type="investment"))
 
     @classmethod
-    def cash(cls, identifier="cash"):
-        return Asset(identifier=identifier, type="cash")
+    def cash(cls: TAsset, identifier: str = "cash") -> TAsset:
+        return cast(TAsset, Asset(identifier=identifier, type="cash"))
 
 
 @dataclass(frozen=True)
@@ -87,7 +104,7 @@ class SetBalance:
     asset: Asset
     date: date
     amount: Decimal
-    created_at: time
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -95,7 +112,7 @@ class SetPrice:
     asset: Asset
     date: date
     amount: Decimal
-    created_at: time
+    created_at: datetime
 
 
 @dataclass
@@ -106,21 +123,21 @@ class Allocation:
     bond_us: Decimal
     bond_intl: Decimal
     cash: Decimal
-    other: Decimal = None
+    other: Decimal = Decimal("0")
 
     @property
-    def stock(self):
+    def stock(self) -> Decimal:
         return self.stock_large + self.stock_mid_small + self.stock_intl
 
     @property
-    def bond(self):
+    def bond(self) -> Decimal:
         return self.bond_us + self.bond_intl
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.other = 100 - (self.stock + self.bond + self.cash)
 
     def subtotals(self, total: Money) -> Dict[str, Money]:
-        subtotals = {}
+        subtotals: Dict[str, Money] = {}
         subtotals["Stock"] = total * (self.stock / 100)
         subtotals["Stock - Large"] = total * (self.stock_large / 100)
         subtotals["Stock - Mid/Small"] = total * (self.stock_mid_small / 100)
@@ -138,7 +155,7 @@ class Allocation:
 class SetTargetAllocation:
     date: date
     allocation: Allocation
-    created_at: time
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -146,7 +163,7 @@ class SetAllocation:
     asset: Asset
     date: date
     allocation: Allocation
-    created_at: time
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -173,7 +190,9 @@ Event = (
 )
 
 
-def event_matcher(target_date: date, target_account: str | None):
+def event_matcher(
+    target_date: date, target_account: str | None
+) -> Callable[[Event], bool]:
     def matcher(event: Event) -> bool:
         match event:
             case SetBalance(account, _, date, _, _):
@@ -194,7 +213,7 @@ def event_matcher(target_date: date, target_account: str | None):
 
 
 class EventEncoder(JSONEncoder):
-    def default(self, obj):
+    def default(self, obj: Any) -> Any:
         if isinstance(obj, Event):
             return obj.__dict__
         elif isinstance(obj, Allocation):
@@ -255,8 +274,8 @@ def parse_event_json(data: str) -> Event:
         return UnknownEvent(event=data)
 
 
-def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
-    event = UnknownEvent(event=str)
+def parse_event(evt: str, date: date, *rest: Any) -> Event:
+    event: Event = UnknownEvent(event=str)
 
     if evt == "set_balance" and len(rest) > 3:
         event = SetBalance(
@@ -284,7 +303,6 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
                 bond_us=Decimal(rest[4]),
                 bond_intl=Decimal(rest[5]),
                 cash=Decimal(rest[6]),
-                other=None,
             ),
             created_at=datetime.fromisoformat(rest[7]),
         )
@@ -298,7 +316,6 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
                 bond_us=Decimal(rest[3]),
                 bond_intl=Decimal(rest[4]),
                 cash=Decimal(rest[5]),
-                other=None,
             ),
             created_at=datetime.fromisoformat(rest[6]),
         )
@@ -311,5 +328,5 @@ def parse_event(evt: str, date: date, *rest: List[str]) -> Event:
     return event
 
 
-def parse_asset(asset: Dict) -> Asset:
+def parse_asset(asset: Dict[str, Any]) -> Asset:
     return Asset(identifier=asset["identifier"], type=asset["type"])
