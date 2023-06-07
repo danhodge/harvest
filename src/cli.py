@@ -128,7 +128,7 @@ def main():
                 default="_".join(camel_to_snake(cur_event.__name__).split("_")[1:]),
             )
             evt = create_event(cur_event, kwargs)
-            write_event(evt, file=events_file)
+            write_event(evt, file_name=events_file)
         elif state == State.SET_ALLOCATION and len(line) > 0:
             amounts = [Decimal(amt) for amt in line.split(" ")]
             if len(amounts) == 6:

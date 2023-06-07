@@ -154,6 +154,7 @@ class Report:
 
         report_records = [(rec, rec.to_report_record()) for rec in records.values()]
         complete, incomplete = partition(report_records, lambda rec: rec[1] is not None)
+        incomplete = list(filter(lambda rec: not rec, incomplete))
         print(f"incomplete={incomplete}")
 
         return cls(

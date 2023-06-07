@@ -47,7 +47,17 @@ class Money:
         sign = "" if abs(self.amount) == self.amount else "-"
         rounded = str(round(abs(self.amount), 2))
         dollars, cents = rounded.split(".")
-        return sign + ".".join([",".join(each_slice(dollars)), cents])
+
+        output = list(reversed(cents))
+        output.append(".")
+        for i, ch in enumerate(reversed(dollars)):
+            if i != 0 and i % 3 == 0:
+                output.append(",")
+            output.append(ch)
+
+        output.append(sign)
+
+        return "".join(reversed(output))
 
     def __add__(self, other: TMoney | SupportsFloat) -> TMoney:
         if isinstance(other, Money):
