@@ -138,9 +138,11 @@ class Report:
             match evt:
                 case SetBalance(account, asset, date, amount) as e:
                     record = records.get((account, asset))
-                    if not record:
+                    if not record and amount != 0:
                         record = ReportRecordEvents(balance_event=e)
                         records[(account, asset)] = record
+                    elif amount == 0:
+                        del records[(account, asset)]
                     else:
                         record.balance_event = e
                 case SetPrice(asset, date, price) as e:
