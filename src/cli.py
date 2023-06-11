@@ -139,7 +139,7 @@ def main():
                     "event",
                     default="_".join(camel_to_snake(cur_event.__name__).split("_")[1:]),
                 )
-                write_event(evt, file=events_file)
+                write_event(evt, file_name=events_file)
 
 
 if __name__ == "__main__":
